@@ -1,0 +1,302 @@
+<html><head>
+        <link href="/projects/css/style.css" rel="stylesheet"><link href="/projects/css/atom-one-dark.css" rel="stylesheet"></head>
+        <body>
+        
+    
+    <div id="write"><p>This is used to record some useful code/tricks I had with using <strong>Spring Boot</strong> for backend application.</p>
+<h1 id="xuezhang-edu">Xuezhang EDU</h1>
+<p>Project information: Secret</p>
+<h2 id="conditional-application-properties">Conditional Application Properties</h2>
+<p>Basically, this is <strong>commonly</strong> used to enable <strong>profile-specific</strong> <code>application.properties</code>.</p>
+<ul>
+<li>in this example, I am using <code>application.yml</code> because I think it is more succinct</li>
+</ul>
+<p>In short, the <strong>idea</strong> is as follows:</p>
+<ol>
+<li>the <code>application.yml</code> will be the <em>main entry point</em>. Here, it will load itself <strong>AND</strong> <em>load other <code>application-&lt;profile&gt;.yml</code></em> <ul>
+<li>I need to tell it <em>which profile to use</em> by specifying <code>spring.profiles.active=&lt;profile&gt;</code></li>
+</ul>
+</li>
+<li>put some profile specific environmental settings/variable inside the <code>application-&lt;profile&gt;.yml</code></li>
+</ol>
+<p><em>For Example</em>:</p>
+<p>Inside <code>application.yml</code></p>
+<pre><code class="hljs language-yml"><span class="hljs-attr">debug:</span> <span class="hljs-literal">true</span>
+<span class="hljs-attr">spring:</span>
+  <span class="hljs-attr">profiles:</span>
+    <span class="hljs-attr">active:</span> <span class="hljs-string">dev</span>
+</code></pre>
+<p>where:</p>
+<ul>
+<li>this will basically load itself, and load <code>application-dev.yml</code> (which <strong>will override overlapping configurations</strong>)</li>
+</ul>
+<p>Then, inside <code>application-dev.yml</code>:</p>
+<pre><code class="hljs language-yml"><span class="hljs-attr">spring:</span>
+  <span class="hljs-attr">datasource:</span>
+  <span class="hljs-comment"># some tcode omitted here</span>
+</code></pre>
+<blockquote>
+<p><strong>Note</strong></p>
+<ul>
+<li><p>If you are having a <code>application-deploy.yml</code> or something similar, such that it technically <em>does not "compile"</em> on your local machine as it <em>does not pass the tests</em> (e.g. the <em>database connection configuration might be different</em>), then you might find the following helpful:</p>
+<pre><code class="hljs language-bash">mvn package -Dmaven.test.skip=<span class="hljs-literal">true</span>
+</code></pre>
+<p>which would <code>package</code> your code <strong>by skipping the testing stage</strong> (do this only when you are 100% sure your code/configuration is correct)</p>
+</li>
+</ul>
+</blockquote>
+<h2 id="conditional-configuration">Conditional Configuration</h2>
+<p>One thing I found handy is the <code>@ConditionalOnProperty</code> annotation, which can be used to:</p>
+<ul>
+<li><em>conditionally</em> include a <code>Bean</code> into the project</li>
+</ul>
+<blockquote>
+<p><strong>Note</strong></p>
+<ul>
+<li>There is a <em>family of methods</em> similar to <code>@ConditionalOnProperty</code>, for example, <code>@ConditionalOnExpression</code>, which might be useful as well.</li>
+</ul>
+</blockquote>
+<p><em>Example</em></p>
+<pre><code class="hljs language-java"><span class="hljs-meta">@Configuration</span>
+<span class="hljs-meta">@ConditionalOnProperty( 
+        value="ajp.enabled",
+        havingValue = "true")</span>
+<span class="hljs-comment">/* loaded ONLY if I set ajp.enabled = true */</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">AJPConfig</span> {
+    <span class="hljs-meta">@Value("${server.port}")</span>
+    <span class="hljs-keyword">private</span> <span class="hljs-type">int</span> serverPort;
+
+    <span class="hljs-comment">/* some code omitted here */</span>
+}
+</code></pre>
+<h2 id="exception-and-status-code">Exception and Status Code</h2>
+<p>The idea is to <code>catch</code> an exception on the controller level, and then <strong>handle it by customizing the <code>response</code></strong>.</p>
+<p>One way to do this is via <code>@ControllerAdvicer</code> and <code>ResponseEntity&lt;Object&gt;</code></p>
+<ol>
+<li>create a class with <code>@CntrollerAdvicer</code></li>
+<li>create handlers per <strong>exception/list of exceptions</strong></li>
+</ol>
+<p><em>For Example</em></p>
+<pre><code class="hljs language-java"><span class="hljs-meta">@ControllerAdvice</span>
+<span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">ControllerAdviser</span> <span class="hljs-keyword">extends</span> <span class="hljs-title class_">ResponseEntityExceptionHandler</span> {
+    <span class="hljs-comment">/* handles all exceptions of type SQLException */</span>
+    <span class="hljs-meta">@ExceptionHandler(SQLException.class)</span>
+    <span class="hljs-keyword">public</span> ResponseEntity&lt;Object&gt; <span class="hljs-title function_">handleSQLException</span><span class="hljs-params">(SQLException e, WebRequest request)</span>{
+        <span class="hljs-keyword">return</span> handleExceptionInternal(e,
+                                       ResultResp.error(<span class="hljs-string">"406"</span>, e.getLocalizedMessage()),
+                                       <span class="hljs-keyword">new</span> <span class="hljs-title class_">HttpHeaders</span>(),
+                                       HttpStatus.NOT_ACCEPTABLE, 
+                                       request);
+    }
+}
+</code></pre>
+<p>where <strong>notice</strong> that:</p>
+<ul>
+<li>we needed to <code>extend ResponseEntityExceptionHandler</code> so that we can use the <code>handleExceptionInternal()</code> method</li>
+<li>we are specifying our own <code>responseBody</code> and <code>statusCode</code>:<ul>
+<li>the <code>ResultResp.error("406", e.getLocalizedMessage())</code> is actually an <code>Object</code>, and it is <em>converted to <code>json</code></em> in the respsone</li>
+<li>the status code is set via <code>HttpStatus.NOT_ACCEPTABLE</code> in the method</li>
+</ul>
+</li>
+</ul>
+<h2 id="file-upload-and-download">File Upload and Download</h2>
+<p>Basically, I just need to utilize the <code>MultipartFile</code> class, and the <code>java.io</code> package to:</p>
+<ul>
+<li><em>obtain</em> the file object</li>
+<li><em>read</em> and/or <em>write</em> to a storage/request<ul>
+<li>use <code>transferTo()</code> for <strong>saving file</strong></li>
+<li>use <code>OutputStream.write()</code> for <strong>writing file</strong></li>
+</ul>
+</li>
+</ul>
+<p><em>For Example</em>:</p>
+<p><strong>Uploading</strong> a File:</p>
+<ul>
+<li>the actual project code is <em>changed a lot</em>. This is just a demonstration of how it should work</li>
+</ul>
+<pre><code class="hljs language-java"><span class="hljs-meta">@PostMapping("/testFileUpload")</span>
+<span class="hljs-keyword">public</span> String <span class="hljs-title function_">test_file_upload</span><span class="hljs-params">(<span class="hljs-meta">@RequestParam</span> String filename, MultipartFile file)</span>{
+    <span class="hljs-keyword">if</span>(file.isEmpty()){
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"empty file"</span>;
+    }
+    <span class="hljs-type">String</span> <span class="hljs-variable">fileName</span> <span class="hljs-operator">=</span> file.getOriginalFilename();
+    <span class="hljs-type">int</span> <span class="hljs-variable">size</span> <span class="hljs-operator">=</span> (<span class="hljs-type">int</span>) file.getSize();
+    System.out.println(fileName + <span class="hljs-string">"--&gt;"</span> + size + filename);
+
+    <span class="hljs-comment">/* NOT GOOD CODE HERE. THIS IS ONLY FOR DEMONSTRATOIN PURPOSE */</span>
+    <span class="hljs-type">String</span> <span class="hljs-variable">path</span> <span class="hljs-operator">=</span> <span class="hljs-string">"C:/Users/26238/Desktop"</span>;
+    <span class="hljs-type">File</span> <span class="hljs-variable">dest</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">File</span>(path + <span class="hljs-string">"/"</span> + fileName);
+    
+    <span class="hljs-keyword">if</span>(!dest.getParentFile().exists()){
+        dest.getParentFile().mkdir();
+    }
+    <span class="hljs-keyword">try</span> {
+        file.transferTo(dest); <span class="hljs-comment">//saving file</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"true"</span>;
+    } <span class="hljs-keyword">catch</span> (IllegalStateException e) {
+        e.printStackTrace();
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"false"</span>;
+    } <span class="hljs-keyword">catch</span> (IOException e) {
+        e.printStackTrace();
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"false"</span>;
+    }
+}
+</code></pre>
+<p><strong>Downloading</strong> a File:</p>
+<ul>
+<li>the actual project code is <em>changed a lot</em>. This is just a demonstration of how it should work</li>
+</ul>
+<pre><code class="hljs language-java"><span class="hljs-meta">@GetMapping("/testFileDownload")</span>
+<span class="hljs-keyword">public</span> String <span class="hljs-title function_">test_file_download</span><span class="hljs-params">(HttpServletResponse response)</span> <span class="hljs-keyword">throws</span> UnsupportedEncodingException {
+    <span class="hljs-comment">/* NOT GOOD CODE HERE. THIS IS ONLY FOR DEMONSTRATOIN PURPOSE */</span>
+    String filename=<span class="hljs-string">"chest-man-14778839.png"</span>;
+    <span class="hljs-type">String</span> <span class="hljs-variable">filePath</span> <span class="hljs-operator">=</span> <span class="hljs-string">"C:/Users/26238/Desktop"</span>;
+    <span class="hljs-type">File</span> <span class="hljs-variable">file</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">File</span>(filePath + <span class="hljs-string">"/"</span> + filename);
+    <span class="hljs-keyword">if</span>(file.exists()){
+        <span class="hljs-comment">//response.setContentType("image/png"); /* optional */</span>
+        response.setCharacterEncoding(<span class="hljs-string">"UTF-8"</span>);
+        response.setHeader(<span class="hljs-string">"Content-Disposition"</span>, <span class="hljs-string">"attachment;fileName="</span> +   java.net.URLEncoder.encode(filename,<span class="hljs-string">"UTF-8"</span>));
+        <span class="hljs-type">byte</span>[] buffer = <span class="hljs-keyword">new</span> <span class="hljs-title class_">byte</span>[<span class="hljs-number">1024</span>];
+        <span class="hljs-type">FileInputStream</span> <span class="hljs-variable">fis</span> <span class="hljs-operator">=</span> <span class="hljs-literal">null</span>;
+        <span class="hljs-type">BufferedInputStream</span> <span class="hljs-variable">bis</span> <span class="hljs-operator">=</span> <span class="hljs-literal">null</span>;
+
+        <span class="hljs-type">OutputStream</span> <span class="hljs-variable">os</span> <span class="hljs-operator">=</span> <span class="hljs-literal">null</span>;
+        <span class="hljs-keyword">try</span> {
+            os = response.getOutputStream();
+            fis = <span class="hljs-keyword">new</span> <span class="hljs-title class_">FileInputStream</span>(file);
+            bis = <span class="hljs-keyword">new</span> <span class="hljs-title class_">BufferedInputStream</span>(fis);
+            <span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> bis.read(buffer);
+            <span class="hljs-keyword">while</span>(i != -<span class="hljs-number">1</span>){
+                os.write(buffer);
+                i = bis.read(buffer);
+            }
+
+        } <span class="hljs-keyword">catch</span> (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.println(<span class="hljs-string">"----------file download---"</span> + filename);
+        <span class="hljs-keyword">try</span> {
+            bis.close();
+            fis.close();
+        } <span class="hljs-keyword">catch</span> (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>;
+}
+</code></pre>
+<blockquote>
+<p><em>References</em>:</p>
+<ul>
+<li><a href="https://www.jianshu.com/p/be1af489551c">https://www.jianshu.com/p/be1af489551c</a></li>
+</ul>
+</blockquote>
+<h2 id="sql-related">SQL Related</h2>
+<p>This section discusses some SQL related code/configurations for this project.</p>
+<h3 id="transactions">Transactions</h3>
+<p>This is obviously useful if we need some <em>multi-step inserts</em>, and we need basically some kind of rollback if one of the SQL statement failed.</p>
+<ul>
+<li>one way to deal with is to use <code>transactions</code>, which can be done either in code or via <code>procedure</code> in <em>database</em></li>
+</ul>
+<p>Here, I will demonstrate a <strong>simple example</strong> of enabling <code>@Transactional</code> in code</p>
+<p><em>For Example: All in or Nothing</em></p>
+<pre><code class="hljs language-java"><span class="hljs-meta">@Transactional</span>
+<span class="hljs-keyword">public</span> ResultResp <span class="hljs-title function_">createTeacher</span><span class="hljs-params">(Teacher teacherInfo)</span> {
+    <span class="hljs-type">User</span> <span class="hljs-variable">userInfo</span> <span class="hljs-operator">=</span> teacherInfo;
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">this</span>.userMapper.createUserInfo(userInfo) == <span class="hljs-number">0</span>) {
+        <span class="hljs-keyword">return</span> ResultResp.error(<span class="hljs-string">"failed to create User with uid:"</span> + userInfo.getUid());
+    }
+    <span class="hljs-keyword">if</span> (<span class="hljs-built_in">this</span>.teacherMapper.createTeacherInfo(teacherInfo) == <span class="hljs-number">0</span>) {
+        <span class="hljs-keyword">return</span> ResultResp.error(<span class="hljs-string">"failed to create Teacher with uid:"</span> + teacherInfo.getUid());
+    }
+    <span class="hljs-keyword">return</span> ResultResp.success(teacherInfo.getUid());
+}
+</code></pre>
+<p>where:</p>
+<ul>
+<li>by using <code>@Transactional</code>, it essentially <strong>wraps this method</strong> around with a <code>BEGIN TRANSACTION</code> and <code>commit</code>. If any one statement failed, nothing is executed</li>
+<li>however, I <em>still needed to return to user some information</em>. Therefore, I need to check <code>rowsAffected</code> so that I can give back error messages correctly</li>
+</ul>
+<h3 id="insert-and-fetch-generated-id">Insert and Fetch Generated ID</h3>
+<p>This comes often when you need to insert into a table, and then <strong>obtain the generated ID</strong> from that table to return.</p>
+<ul>
+<li>one way is to use the <code>RETURNING &lt;col-name&gt;</code> in the SQL statement</li>
+<li>below uses the MyBatis supported <code>useGeneratedKeys="true"</code></li>
+</ul>
+<p><em>For Example</em></p>
+<p>Suppose you want to insert into a table called <code>Users</code>, and you want to <strong>fetch the generated id <code>uid</code></strong>. </p>
+<p>The method signature looks like:</p>
+<pre><code class="hljs language-java"><span class="hljs-type">int</span> <span class="hljs-title function_">createUserInfo</span><span class="hljs-params">(<span class="hljs-meta">@Valid</span> <span class="hljs-meta">@NotNull</span> User user)</span>;
+</code></pre>
+<p>where:</p>
+<ul>
+<li>this <code>User user</code> will not only contain the <code>some_info</code> that you need to <em>insert into table</em></li>
+<li>it will <strong>also be used to store the generated ID</strong> (see below)</li>
+</ul>
+<p>Then, the mapper looks like</p>
+<pre><code class="hljs language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">insert</span> <span class="hljs-attr">id</span>=<span class="hljs-string">"createUserInfo"</span> <span class="hljs-attr">useGeneratedKeys</span>=<span class="hljs-string">"true"</span> <span class="hljs-attr">keyProperty</span>=<span class="hljs-string">"uid"</span> <span class="hljs-attr">keyColumn</span>=<span class="hljs-string">"uid"</span>&gt;</span>
+    INSERT INTO Users (some_info)
+    VALUES (#{some_info})
+<span class="hljs-tag">&lt;/<span class="hljs-name">insert</span>&gt;</span>
+</code></pre>
+<p>where:</p>
+<ul>
+<li>the <code> useGeneratedKeys="true" keyColumn="uid"</code> means the <code>uid</code> <strong>column is generated</strong></li>
+<li>the <code>keyProperty="uid"</code> means that the <strong>generated key will be filled into the <code>uid</code> field of the object passed in</strong> .<ul>
+<li>i.e. you will be able to get the <code>uid</code> via <code>user.uid</code> after the insert</li>
+</ul>
+</li>
+</ul>
+<h3 id="full-text-search-and-in-all">Full Text Search and IN All</h3>
+<p>This is useful when I wanted to implement a search bar in my application. Instead of string matching using <code>LIKE</code>, using a FTS for MySQL would be more natural.</p>
+<p>In short, I needed to:</p>
+<ul>
+<li>for MySQL database, add an <code>INDEX</code> of <code>FULLTEXT</code> to a column of <code>VARCHAR/CHAR</code> that I had</li>
+<li>If needed REGEX for matching, use <code>MATCH(&lt;column&gt;) AGAINST('&lt;expression&gt;' IN BOOLEAN MODE)</code></li>
+<li>some other filters in addition to this (application specific)<ul>
+<li>one example I will show here is the <em>trick</em> of computing a data entry that is in ALL of the given <code>in</code></li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p><strong>Note</strong></p>
+<ul>
+<li>According to some tutorials I have read, if the FTS would return 0 rows if the search key is ==less than 3 characters==</li>
+</ul>
+</blockquote>
+<p><em>For Example</em></p>
+<p>A full test search might look like:</p>
+<pre><code class="hljs language-sql"><span class="hljs-keyword">SELECT</span> <span class="hljs-operator">*</span> <span class="hljs-keyword">FROM</span> `Users`
+<span class="hljs-keyword">WHERE</span> <span class="hljs-keyword">MATCH</span>(username) AGAINST(<span class="hljs-string">'xiao*'</span> <span class="hljs-keyword">IN</span> <span class="hljs-type">BOOLEAN</span> MODE);
+</code></pre>
+<p>The actual MyBatis SQL</p>
+<pre><code class="hljs language-xml"><span class="hljs-tag">&lt;<span class="hljs-name">select</span> <span class="hljs-attr">id</span>=<span class="hljs-string">"getBBBByFilters"</span> <span class="hljs-attr">resultMap</span>=<span class="hljs-string">"BBB"</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">choose</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">when</span> <span class="hljs-attr">test</span>=<span class="hljs-string">"filter != null and filter.subjects != null"</span>&gt;</span>
+            WITH SubjectFilter AS(
+                SELECT ts.uid FROM AAA ts
+                WHERE ts.subject_id IN
+                <span class="hljs-tag">&lt;<span class="hljs-name">foreach</span> <span class="hljs-attr">collection</span>=<span class="hljs-string">"filter.subjects"</span> <span class="hljs-attr">item</span>=<span class="hljs-string">"item"</span>
+                         <span class="hljs-attr">open</span>=<span class="hljs-string">"("</span> <span class="hljs-attr">close</span>=<span class="hljs-string">")"</span> <span class="hljs-attr">separator</span>=<span class="hljs-string">","</span>&gt;</span>
+                    #{item.subject_id}
+                <span class="hljs-tag">&lt;/<span class="hljs-name">foreach</span>&gt;</span>
+                GROUP BY ts.uid
+                HAVING COUNT(*) = ${filter.subjects.size}
+            )
+            SELECT t.* FROM BBB t
+            JOIN SubjectFilter sf ON t.uid = sf.uid
+        <span class="hljs-tag">&lt;/<span class="hljs-name">when</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">otherwise</span>&gt;</span>
+            SELECT * FROM BBB t
+        <span class="hljs-tag">&lt;/<span class="hljs-name">otherwise</span>&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">choose</span>&gt;</span>
+
+    <span class="hljs-tag">&lt;<span class="hljs-name">where</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">if</span> <span class="hljs-attr">test</span>=<span class="hljs-string">"searchName != null and searchName != ''"</span>&gt;</span>
+            MATCH(t.real_name) AGAINST(CONCAT(#{searchName}, '*') IN BOOLEAN MODE)
+        <span class="hljs-tag">&lt;/<span class="hljs-name">if</span>&gt;</span>
+        <span class="hljs-comment">&lt;!-- some other filters omitted here --&gt;</span>
+    <span class="hljs-tag">&lt;/<span class="hljs-name">where</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">select</span>&gt;</span>
+</code></pre>
+</div></body></html>

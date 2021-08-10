@@ -1,0 +1,6 @@
+# IDE
+.vscode
+
+# residue
+package-lock.json
+node_modules
