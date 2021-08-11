@@ -5,8 +5,8 @@ const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 
 var args = process.argv.slice(2);
-var root = args[0] ? args[0] : "/public/";
-console.log(`[INFO] root configure to be: ${args[0]}`)
+var root = args[0] == null ? "/public/" : args[0];
+console.log(`[INFO] root configure to be: ${root}`)
 
 
 // Set options
@@ -60,16 +60,31 @@ function __add_wrapper_div(body_content, document) {
     body.appendChild(wrapper_div);
 }
 
-function __wrap_post(body_content, dom) {
+function __add_post_info(config, document) {
+    let wrapper_div = document.getElementById("write");
+    let title_element = document.createElement("h1");
+    let date_element = document.createElement("p");
+    let hr_element = document.createElement("hr");
+    title_element.innerHTML = config.title;
+    date_element.innerHTML = `Created Date: ${config.date}`
+    date_element.style["color"] = "grey";
+    // insert in the reverse order
+    wrapper_div.insertBefore(hr_element, wrapper_div.firstChild);
+    wrapper_div.insertBefore(date_element, wrapper_div.firstChild);
+    wrapper_div.insertBefore(title_element, wrapper_div.firstChild);
+}
+
+function __wrap_post(body_content, config, dom) {
     const document = dom.window.document;
     __add_css(document);
     __add_wrapper_div(body_content, document);
+    __add_post_info(config, document);
 }
 
 function __form_json_from_array(strings) {
     let json_raw = []
     for (let string of strings) {
-        let kv = string.split(":")
+        let kv = string.split(": ")
         let entry = [];
         for (let v of kv) {
             v = v.trim();
@@ -108,7 +123,7 @@ function render_single_post() {
     const html = marked(fileContent);
 
     const dom = get_dom();
-    __wrap_post(html, dom);
+    __wrap_post(html, config, dom);
 
     try {
         const data = fs.writeFileSync(
