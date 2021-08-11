@@ -1,4 +1,6 @@
 const fs = require("fs");
+const fse = require("fs-extra");
+const path = require('path');
 const marked = require('marked');
 const hljs = require('highlight.js');
 const jsdom = require("jsdom");
@@ -106,17 +108,19 @@ function __form_json_from_array(strings) {
 
 function parse_config(raw_md) {
     const re = /---\n([^]+)---\n+/;
+    raw_md = raw_md.replace(/\r\n/g, "\n");
     let found = raw_md.match(re)[1];
     return __form_json_from_array(found.split("\n"));
 }
 
 function remove_config(raw_md) {
     const re = /(---\n[^]+---\n+)/;
+    raw_md = raw_md.replace(/\r\n/g, "\n");
     return raw_md.replace(re, "");
 }
 
-function render_single_post() {
-    const buffer = fs.readFileSync("source/SpringBoot-Projects.md");
+function render_single_post(file_path, file) {
+    const buffer = fs.readFileSync(file_path);
     let fileContent = buffer.toString();
     const config = parse_config(fileContent);
     fileContent = remove_config(fileContent);
@@ -127,7 +131,7 @@ function render_single_post() {
 
     try {
         const data = fs.writeFileSync(
-            'public/pages/SpringBoot-Projects.html',
+            `public/pages/${file.slice(0, -3)}.html`,
             dom.window.document.documentElement.outerHTML
         );
     } catch (err) {
@@ -135,4 +139,17 @@ function render_single_post() {
     }
 }
 
-render_single_post()
+function render_posts(directory) {
+    let files = fs.readdirSync(directory);
+    for (let file of files) {
+        if (file.endsWith(".md")) {
+            render_single_post(path.join(directory, file), file);
+            fse.copySync(
+                path.join(directory, `${file.slice(0, -3)}`),
+                path.join("public/pages", `${file.slice(0, -3)}`), { overwrite: true }
+            );
+        }
+    }
+}
+
+render_posts("source")
