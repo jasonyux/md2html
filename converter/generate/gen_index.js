@@ -48,8 +48,10 @@ function __group_sorted_by_year(sorted_data) {
 
 function __create_single_li(config) {
     let li = document.createElement("li");
-    let a = document.createElement("a");
+    let a = document.createElement("div");
     a.href = config.link;
+    a.className = "triggers";
+    a.setAttribute("onclick", "show_present()");
     let p = document.createElement("p");
     p.innerHTML = config.title;
     let svg = document.createElement("svg");
