@@ -26,6 +26,7 @@ function __display_present() {
     wrapper.style.display = "flex";
     wrapper.style.flexDirection = "row";
     present.style.width = "180%";
+    present.style.display = "block";
     timeline.style.width = "100%";
 }
 
@@ -33,6 +34,7 @@ function __hide_present() {
     wrapper.style.display = null;
     wrapper.style.flexDirection = null;
     present.style.width = "0%";
+    present.style.display = "none";
     timeline.style.width = null;
 
 }
@@ -58,7 +60,6 @@ function restore_timeline() {
 }
 
 function show_present() {
-    console.log("clicked")
     change_alignments();
     __display_present();
     adjust_timline();
