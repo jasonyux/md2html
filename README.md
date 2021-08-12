@@ -15,3 +15,7 @@ node .\converter\converter.js /projects/
 ```
 which sets the root directory to `/projects/`
 ---
+
+## References
+Style on project homepage:
+- https://codepen.io/ErrolMascarenhas/pen/YzVxJRJ

@@ -141,22 +141,26 @@ function render_single_post(file_path, file) {
             dom.window.document.documentElement.outerHTML
         );
     } catch (err) {
-        console.error(err)
+        console.error(err);
     }
+    return [config, file.slice(0, -3), `pages/${file.slice(0, -3)}.html`];
 }
 
 function render_posts(directory) {
     __config();
+    let ret = []
     let files = fs.readdirSync(directory);
     for (let file of files) {
         if (file.endsWith(".md")) {
-            render_single_post(path.join(directory, file), file);
+            let rendered = render_single_post(path.join(directory, file), file);
             fse.copySync(
                 path.join(directory, `${file.slice(0, -3)}`),
                 path.join("public/pages", `${file.slice(0, -3)}`), { overwrite: true }
             );
+            ret.push(rendered);
         }
     }
+    return ret;
 }
 
 function print_root() {

@@ -19,6 +19,11 @@ body {
     user-select: none;
 }
 
+p {
+    font-weight: 100;
+    color: whitesmoke;
+}
+
 .title {
     text-align: center;
     margin: 5vh;
@@ -167,11 +172,6 @@ body {
     .right {
         left: 0%;
     }
-}
-
-p {
-    font-weight: 100;
-    color: white;
 }
 
 $font {
