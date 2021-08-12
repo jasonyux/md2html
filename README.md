@@ -2,7 +2,14 @@
 Conversion using `marked` + `highlight.js`, with some customized stylesheets (see `public/css`) + html page design (under development).
 
 ## Usage
-Basically it takes the markdown files under the `source` folder and generates `html` files (along with others) into the `<root>` folder.
+Basically it takes
+- markdown folders/files under the `source` folder
+- template html/css files under the `templates` folder
+
+and generates 
+- `html` files for posts (including css and etc) into the `<root>/pages` folder
+- the homepage `index.html` into the `<root>` folder which contains links to the above files
+
 ```
 node .\converter\converter.js <root>
 ```
@@ -14,6 +21,7 @@ where:
 node .\converter\converter.js /projects/
 ```
 which sets the root directory to `/projects/`
+
 ---
 
 ## References
