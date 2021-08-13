@@ -40,6 +40,15 @@ p {
     /* width: 180%; */
 }
 
+#present-embed {
+    width: 90%;
+    height: 80vh;
+}
+
+.back {
+    margin: 2px;
+}
+
 
 /* The actual timeline (the vertical ruler) */
 

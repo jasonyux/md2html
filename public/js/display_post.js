@@ -59,9 +59,23 @@ function restore_timeline() {
     styleElem.innerHTML = null;
 }
 
-function show_present() {
+function add_new_present(link) {
+    let curr_present = document.getElementById("present-embed");
+    if (curr_present == null) {
+        curr_present = document.createElement("embed");
+        curr_present.src = link;
+        curr_present.id = "present-embed";
+        curr_present.nodeType = "text/html";
+        present.appendChild(curr_present); // this has to be placed at the last
+    } else {
+        curr_present.src = link;
+    }
+}
+
+function show_present(link) {
     change_alignments();
     __display_present();
+    add_new_present(link);
     adjust_timline();
 }
 

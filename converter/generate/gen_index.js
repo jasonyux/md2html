@@ -51,7 +51,7 @@ function __create_single_li(config) {
     let a = document.createElement("div");
     a.href = config.link;
     a.className = "triggers";
-    a.setAttribute("onclick", "show_present()");
+    a.setAttribute("onclick", `show_present('${config.link}')`);
     let p = document.createElement("p");
     p.innerHTML = config.title;
     let svg = document.createElement("svg");
